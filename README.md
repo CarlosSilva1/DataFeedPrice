@@ -1,2 +1,3 @@
-# DataFeedPrice
-Data Feed Price
+# Data Feed Price
+
+Initial repository scaffold for the Data Feed Price project.
