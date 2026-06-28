@@ -15,6 +15,12 @@ Tick-by-tick price data for backtesting. Organized as one subfolder per instrume
 - `bid_price`, `ask_price` - float64
 - `bid_volume`, `ask_volume` - float64
 
+## Backtesting in MetaTrader 4
+
+See **[GUIA-BACKTEST-MT4.md](./GUIA-BACKTEST-MT4.md)** (PT) — passo a passo para
+backtest com 99% de qualidade no MT4. To turn these Parquet ticks into a CSV that
+MT4 / Tick Data Suite can import, use `tools/parquet_to_mt4_csv.py`.
+
 ## Mirror on Hugging Face
 
 - https://huggingface.co/datasets/CarlosSilva1/xauusd-ticks
