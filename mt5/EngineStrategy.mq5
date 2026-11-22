@@ -88,6 +88,11 @@ ulong MyTicket()
    return 0;
 }
 
+// Brokers often open the trade session a few minutes after the bar opens (HFM USA500:
+// quotes from 01:00, trading from 01:05). A "market closed" reject is retried on the
+// next tick instead of losing the signal.
+bool RetryLater() { return trade.ResultRetcode() == TRADE_RETCODE_MARKET_CLOSED; }
+
 void OpenLong()
 {
    double eq   = AccountInfoDouble(ACCOUNT_EQUITY);
@@ -101,7 +106,11 @@ void OpenLong()
    if(lots > vmax) lots = vmax;
    lots = NormalizeDouble(lots, 8);
    if(lots < vmin) { PrintFormat("Lot %.4f below minimum %.4f, entry skipped", lots, vmin); return; }
-   if(!trade.Buy(lots, _Symbol)) Print("Buy failed: ", trade.ResultRetcodeDescription());
+   if(!trade.Buy(lots, _Symbol))
+   {
+      if(RetryLater()) { lastBar = 0; return; }
+      Print("Buy failed: ", trade.ResultRetcodeDescription());
+   }
 }
 
 void OnTick()
@@ -136,7 +145,11 @@ void OnTick()
    ulong ticket = MyTicket();
    if(ticket != 0 && exit)
    {
-      if(!trade.PositionClose(ticket)) { Print("Close failed: ", trade.ResultRetcodeDescription()); lastBar = 0; }
+      if(!trade.PositionClose(ticket))
+      {
+         if(!RetryLater()) Print("Close failed: ", trade.ResultRetcodeDescription());
+         lastBar = 0;
+      }
       return;
    }
    if(ticket == 0 && entry) OpenLong();

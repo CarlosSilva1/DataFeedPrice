@@ -7,7 +7,8 @@ Mirrors what the MT5 Strategy Tester does for an EA that acts on a new bar:
     (plus extra_spread_points/2 if your broker is wider than the data feed),
   - a money account: deposit, real lots (volume_min / volume_step, rounded down),
     lot size fixed when the trade opens = exposure x equity / (price x contract),
-  - commission per lot per side, swap charged at every server-midnight rollover
+  - commission per lot per side, swap (% per year of notional, or USD per lot when
+    the spec has swap_long_usd_per_lot / swap_short_usd_per_lot) charged at every server-midnight rollover
     the position is held through, tripled on the symbol's triple-swap weekday
     and not charged on weekend rollovers,
   - equity is marked at the bid.
@@ -114,7 +115,9 @@ def simulate(streams: list[Stream], n: int, dep: float | None = None) -> dict:
         S.append({"s": s, "lots": 0.0, "mark": 0.0, "pnl": 0.0, "entry_eq": 0.0, "entry_i": 0,
                   "cs": sp["contract_size"], "step": sp["volume_step"], "vmin": sp["volume_min"],
                   "comm": sp["commission_per_lot_per_side_usd"],
-                  "swl": sp["swap_long_pct_per_year"] / 100 / 360, "sws": sp["swap_short_pct_per_year"] / 100 / 360,
+                  "swap_usd": "swap_long_usd_per_lot" in sp,
+                  "swl": sp.get("swap_long_usd_per_lot", sp.get("swap_long_pct_per_year", 0) / 100 / 360),
+                  "sws": sp.get("swap_short_usd_per_lot", sp.get("swap_short_pct_per_year", 0) / 100 / 360),
                   "skipped": 0, "entries": 0})
     trades = []
     max_lev = 0.0
@@ -152,7 +155,9 @@ def simulate(streams: list[Stream], n: int, dep: float | None = None) -> dict:
                 d = st["lots"] * st["cs"] * (s.close[i] - st["mark"])
                 st["mark"] = s.close[i]
                 n_ = abs(st["lots"]) * st["cs"] * s.close[i]
-                d += n_ * (st["swl"] if st["lots"] > 0 else st["sws"]) * s.swap_w[i]
+                rate = st["swl"] if st["lots"] > 0 else st["sws"]
+                # MT5 swap type "in money": USD per lot per rollover; otherwise % per year of notional
+                d += (abs(st["lots"]) if st["swap_usd"] else n_) * rate * s.swap_w[i]
                 equity += d; st["pnl"] += d
                 notional += n_
                 in_mkt[i] = True

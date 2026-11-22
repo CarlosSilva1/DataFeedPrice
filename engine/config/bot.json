@@ -3,7 +3,7 @@
   "bot_id": "SET_ME",
   "platform": "mt5",
   "benchmark": "absolute",
-  "available_pairs": ["US500", "XAUUSD"],
+  "available_pairs": ["USA500", "XAUUSD"],
   "equivalents": {
     "US500": ["US500", "US500.cash", "US500Cash", "SPX500", "SP500", "USA500", "USA500IDXUSD", "US500m", "ES", "MES", "SPY"],
     "XAUUSD": ["XAUUSD", "GOLD", "XAUUSDm", "XAUUSD.r", "XAU/USD", "GC", "MGC", "PAXGUSDT"]

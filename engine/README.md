@@ -52,7 +52,7 @@ comparison. The leverage is stored per combo and the bot trades it.
 | "Every tick based on real ticks" + delay | `engine/ticksim.py`: fill at the real tick `signal_delay_minutes` (20 +/- 10, the scheduled task + EA pipeline) + `latency_ms` after the bar opens |
 | Deposit, lots, volume min/step | Money account (`account.initial_deposit`), lots = exposure x equity / (price x contract), rounded down, fixed at entry |
 | Commission per lot | `commission_per_lot_per_side_usd` |
-| Swap, triple-swap day | % per year / 360 of notional at each server-midnight rollover, x3 on `swap_triple_weekday`, none on weekend rollovers |
+| Swap, triple-swap day | % per year / 360 of notional (`swap_long_pct_per_year`), or USD per lot when the broker's swap type is money (`swap_long_usd_per_lot` / `swap_short_usd_per_lot`), at each server-midnight rollover, x3 on `swap_triple_weekday`, none on weekend rollovers |
 | Bollinger Bands / RSI / EMA | Population std for Bands, Wilder smoothing for RSI, standard EMA |
 | Profit factor, win rate, trades | From money P&L of closed trades |
 
