@@ -9,4 +9,6 @@ Read `engine/README.md` before changing the engine.
 - New prices: `python -m engine.livefeed` (needs datafeed.dukascopy.com on the network allowlist).
 - MCP server: `.mcp.json` registers `engine/mcp_server.py` for Claude Code.
 - Scheduled bot run instructions: `engine/SCHEDULED_TASK_PROMPT.md`.
+- The engine mirrors the MT5 Strategy Tester (bid bars on the broker server clock, money account with real lots, real-tick fills with delay, swap). Keep backtest, bot and EA behaviour identical when changing any of them; the table in `engine/README.md` lists what must match.
+- After changing engine logic, re-run both portfolio modes and check `python -m engine.bot` still works.
 - Never trade when the bot STOPs (missing pair, unset bot_id, stale data, empty portfolio).

@@ -1,8 +1,10 @@
 """One bot, every combo: turn the current portfolio into target positions.
 
 For each combo in the portfolio (engine/hot_backtests/portfolio_<benchmark>.json):
-  target exposure (% of NAV) = %NAV allocation x leverage x latest signal (-1/0/+1)
-Exposures of combos on the same asset are netted into one target per pair.
+  exposure (% of NAV) = %NAV allocation x leverage x signal of the last CLOSED bar (-1/0/+1)
+The EA holds one position per combo (magic = Magic + magic_offset), sized when it
+opens: lots = exposure x equity / (price x contract), rounded down to the lot step.
+This is exactly what engine.portfolio.simulate_account backtests.
 
 Safety stops (exit code 2, nothing is sent):
   - an asset in the portfolio has no equivalent pair in bot.json's available_pairs,
@@ -25,6 +27,7 @@ import os
 import re
 import sys
 import urllib.request
+import zlib
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -80,9 +83,16 @@ def portfolio(cfg: dict) -> dict:
     return json.loads(p.read_text())
 
 
+def magic_offset(combo_id: str) -> int:
+    """Stable per-combo number; the EA uses Magic + this to own one position per combo."""
+    return zlib.crc32(combo_id.encode()) % 90000 + 1
+
+
 def plan(cfg: dict | None = None, now: datetime | None = None) -> dict:
     cfg = cfg or config()
     now = now or datetime.now(timezone.utc)
+    now_utc = pd.Timestamp(now).tz_convert("UTC").tz_localize(None)
+    now_server = bars.to_server(pd.DatetimeIndex([now_utc]))[0]
     if cfg["bot_id"] in ("", "SET_ME"):
         raise BotStop("STOP: bot_id is not set in engine/config/bot.json.")
     pf = portfolio(cfg)
@@ -91,28 +101,33 @@ def plan(cfg: dict | None = None, now: datetime | None = None) -> dict:
         raise BotStop("STOP: the current portfolio is empty (no combo passed the rules). Holding nothing.")
     pairs = resolve_pairs(sorted({c["asset"] for c in combos}), cfg)
 
-    targets: dict[str, dict] = {}
-    newest = None
+    out, targets, last_h1 = [], {}, None
     for c in combos:
         df = bars.load_bars(c["asset"], c["timeframe"])
-        sig = strategies.signal(c["strategy"], df, c["params"])
-        last_ts = df.index[-1]
-        newest = last_ts if newest is None else min(newest, last_ts)
-        s = float(sig.iloc[-1])
-        expo = c["nav_pct"] * c.get("leverage", 1.0) * s
-        t = targets.setdefault(c["asset"], {"asset": c["asset"], "pair": pairs[c["asset"]],
-                                             "target_exposure_pct_nav": 0.0, "components": []})
-        t["target_exposure_pct_nav"] = round(t["target_exposure_pct_nav"] + expo, 2)
-        t["components"].append({"combo": c["id"], "params": c["params"], "nav_pct": c["nav_pct"],
-                                "leverage": c.get("leverage", 1.0), "signal": s, "bar": str(last_ts)})
+        h1_last = bars.load_h1_utc(c["asset"]).index[-1]
+        last_h1 = h1_last if last_h1 is None else min(last_h1, h1_last)
+        # Like the backtest and an MT5 new-bar EA: only CLOSED bars produce signals.
+        if df.index[-1] + bars.TF_DELTA[c["timeframe"]] > now_server:
+            df = df.iloc[:-1]
+        s = float(strategies.signal(c["strategy"], df, c["params"]).iloc[-1])
+        expo = round(c["nav_pct"] * c.get("leverage", 1.0) * s, 2)
+        out.append({"combo": c["id"], "pair": pairs[c["asset"]], "magic_offset": magic_offset(c["id"]),
+                    "exposure_pct_nav": expo, "signal": s, "nav_pct": c["nav_pct"],
+                    "leverage": c.get("leverage", 1.0), "params": c["params"],
+                    "signal_bar_server_time": str(df.index[-1])})
+        t = targets.setdefault(c["asset"], {"asset": c["asset"], "pair": pairs[c["asset"]], "net_exposure_pct_nav": 0.0})
+        t["net_exposure_pct_nav"] = round(t["net_exposure_pct_nav"] + expo, 2)
 
-    age_h = (pd.Timestamp(now).tz_localize(None) - newest).total_seconds() / 3600 if newest is not None else 1e9
+    age_h = (now_utc - (last_h1 + pd.Timedelta("1h"))).total_seconds() / 3600
     return {
         "bot_id": cfg["bot_id"], "platform": cfg["platform"], "benchmark": pf["benchmark"],
-        "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"), "portfolio_generated_at": pf["generated_at"],
-        "oldest_last_bar_utc": str(newest), "data_age_hours": round(age_h, 1),
+        "generated_at": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "generated_at_mt5": now_utc.strftime("%Y.%m.%d %H:%M"),   # UTC, in the format MQL5 StringToTime reads
+        "portfolio_generated_at": pf["generated_at"],
+        "last_price_bar_utc": str(last_h1), "data_age_hours": round(age_h, 1),
         "stale": age_h > cfg["max_data_age_hours"],
-        "targets": list(targets.values()),
+        "combos": out,
+        "net_by_pair": list(targets.values()),
     }
 
 

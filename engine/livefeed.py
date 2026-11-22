@@ -1,8 +1,7 @@
 """Bring price bars up to date from Dukascopy (the same source as the repo's tick data).
 
 Downloads hourly tick files (bi5 = LZMA-compressed 20-byte records) for every
-hour after the last cached bar, builds H1 bars (mid OHLC, mean spread, first
-bid/ask) and appends them to engine/data/bars/<SYM>_H1_live.csv.gz.
+hour after the last cached bar, builds H1 bid bars (same as engine.bars) and appends them to engine/data/bars/<SYM>_H1_live.csv.gz.
 
 Needs outbound HTTPS to datafeed.dukascopy.com. In a Claude cloud session that
 host must be on the environment's allowed hosts list.
@@ -19,6 +18,7 @@ import struct
 import time
 import urllib.error
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timedelta, timezone
 
 import numpy as np
@@ -56,33 +56,37 @@ def fetch_hour(sym: str, hour: datetime) -> pd.DataFrame:
 
 
 def _to_bar(t: pd.DataFrame, hour: datetime) -> dict | None:
-    t = t[(t.bid_price > 0) & (t.ask_price >= t.bid_price)]
     if t.empty:
         return None
-    mid = (t.bid_price + t.ask_price) / 2
-    return {"timestamp": pd.Timestamp(hour.replace(tzinfo=None)), "open": mid.iloc[0], "high": mid.max(),
-            "low": mid.min(), "close": mid.iloc[-1], "spread": (t.ask_price - t.bid_price).mean(),
-            "open_bid": t.bid_price.iloc[0], "open_ask": t.ask_price.iloc[0], "ticks": len(t)}
+    b = bars.ticks_to_h1(t)            # same bid-bar construction as the historical bars
+    if b.empty:
+        return None
+    return {"timestamp": pd.Timestamp(hour.replace(tzinfo=None)), **b.iloc[0].to_dict()}
 
 
 def update(sym: str, max_hours: int = 24 * 200) -> int:
     live = bars.BARS_DIR / f"{sym}_H1_live.csv.gz"
-    last = bars.load_bars(sym, "H1").index[-1].to_pydatetime().replace(tzinfo=timezone.utc)
+    last = bars.load_h1_utc(sym).index[-1].to_pydatetime().replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     hours = [last + timedelta(hours=i) for i in range(1, max_hours + 1) if last + timedelta(hours=i) < now]
-    new = []
-    for i, h in enumerate(hours):
-        if h.weekday() == 5:  # Saturday: market closed
-            continue
+    hours = [h for h in hours if h.weekday() != 5]  # Saturday: market closed
+
+    def one(h):
         try:
-            b = _to_bar(fetch_hour(sym, h), h)
-        except RuntimeError as e:  # keep what we have; the next run resumes from here
-            print(f"  {sym}: {e}; stopping at {h}")
-            break
-        if b:
-            new.append(b)
-        if i and i % 200 == 0:
-            print(f"  {sym}: {i}/{len(hours)} hours")
+            return _to_bar(fetch_hour(sym, h), h)
+        except RuntimeError as e:
+            return e
+
+    new = []
+    with ThreadPoolExecutor(max_workers=6) as ex:
+        for i, (h, b) in enumerate(zip(hours, ex.map(one, hours))):
+            if isinstance(b, RuntimeError):  # keep what we have in order; the next run resumes from here
+                print(f"  {sym}: {b}; stopping at {h}")
+                break
+            if b:
+                new.append(b)
+            if i and i % 500 == 0:
+                print(f"  {sym}: {i}/{len(hours)} hours", flush=True)
     if new:
         df = pd.DataFrame(new).set_index("timestamp")
         if live.exists():

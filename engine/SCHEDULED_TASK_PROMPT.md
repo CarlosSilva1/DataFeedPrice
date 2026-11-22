@@ -6,13 +6,16 @@ This is the prompt the scheduled task runs. It automates the whole Portfolio Pro
 
 You are running the Portfolio Bot for repository CarlosSilva1/DataFeedPrice.
 
-1. Get the code. If the repo is not already in your working directory, clone it. Check out branch
-   `claude/sleepy-hypatia-xi4g3r` (the branch the MT5 EA reads orders from) and pull it.
-   Run `pip install -r engine/requirements.txt`.
+1. Get the code. If the repo is not already in your working directory, clone it without the tick
+   files (they are ~3.4 GB and only the weekly rebuild needs them):
+   `git clone --filter=blob:none --sparse --branch claude/sleepy-hypatia-xi4g3r https://github.com/CarlosSilva1/DataFeedPrice`
+   then `git sparse-checkout set engine mt5` inside it. `claude/sleepy-hypatia-xi4g3r` is the branch
+   the MT5 EA reads orders from. Run `pip install -r engine/requirements.txt`.
 2. Update prices: `python -m engine.livefeed`. If it fails because datafeed.dukascopy.com is blocked,
    say so in your final message; the bot step below will then STOP on stale data, which is correct.
 3. Rebuild the portfolio when it is older than 7 days (check `generated_at` in
    `engine/hot_backtests/portfolio_<benchmark>.json`, benchmark from `engine/config/bot.json`) or missing:
+   first `git sparse-checkout disable` (the real-tick check reads the tick files), then
    `python -m engine.portfolio --benchmark <benchmark>`.
    Rules it applies: beats buy & hold over the same period, max drawdown < 50%, too-good-to-be-true
    outliers removed, %NAV sized by risk/reward; every selected combo is saved to Hot Backtests
@@ -21,10 +24,10 @@ You are running the Portfolio Bot for repository CarlosSilva1/DataFeedPrice.
    which asset has no equivalent pair on their bot (the message names it). Do not send orders.
 5. Produce orders: `python -m engine.bot` (add `--send` only if the BOT_WEBHOOK_URL env var is set).
    Exit code 2 = STOP: report the message verbatim and do not trade.
-6. Commit `engine/hot_backtests/`, `engine/output/orders_latest.json` and `engine/data/bars/*_live.csv.gz`
+6. Commit `engine/hot_backtests/`, `engine/output/orders_latest.json` and `engine/data/bars/*_live.csv.gz` (use `git add -f` for the orders file if needed)
    with message "Bot run <UTC time>" and push to `claude/sleepy-hypatia-xi4g3r`
    (`git push -u origin claude/sleepy-hypatia-xi4g3r`, retry up to 4 times on network errors).
    The MT5 EA picks the orders up from there.
-7. Final message (short): bot ID, per pair target %NAV and the combos behind it, whether the
+7. Final message (short): bot ID, each combo's pair and exposure % of NAV (and the net per pair), whether the
    portfolio was rebuilt (and what changed), any STOP and why. Never change engine rules or
    config on your own.

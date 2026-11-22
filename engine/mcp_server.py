@@ -26,15 +26,11 @@ mcp = _Server(
     "datafeedprice-engine",
     instructions=(
         "Backtesting + portfolio engine on real tick data with MT5-style execution "
-        "(bid/ask fills, latency, slippage, commission, swap). Typical flow: list_assets -> "
+        "(bid bars on the broker server clock, money account with real lots, ask/bid fills, signal delay, slippage, commission, swap). Typical flow: list_assets -> "
         "build_portfolio -> get_hot_backtests -> bot_orders. bot_orders refuses to trade when an "
         "asset has no equivalent pair on the bot or when data is stale; relay that STOP to the user."
     ),
 )
-
-
-def _strip(r: dict) -> dict:
-    return {k: v for k, v in r.items() if k not in ("returns", "equity", "bh_equity", "position")}
 
 
 @mcp.tool()
@@ -42,19 +38,22 @@ def list_assets() -> dict:
     """Assets with cached bars, their data range, strategies and their parameter grids."""
     out = {}
     for s in bars.available_symbols():
-        h1 = bars.load_bars(s, "H1")
-        out[s] = {"first_bar": str(h1.index[0]), "last_bar": str(h1.index[-1]), "h1_bars": len(h1)}
+        h1 = bars.load_h1_utc(s)
+        out[s] = {"first_bar_utc": str(h1.index[0]), "last_bar_utc": str(h1.index[-1]), "h1_bars": len(h1)}
     return {"assets": out, "timeframes": list(bars.TF_RULES), "strategies": strategies.GRID}
 
 
 @mcp.tool()
-def run_backtest(asset: str, strategy: str, timeframe: str, params: dict, real_ticks: bool = False) -> dict:
-    """Backtest one asset+strategy+timeframe with given params. real_ticks=True fills every
-    order on real ticks with latency (slower, closest to live)."""
+def run_backtest(asset: str, strategy: str, timeframe: str, params: dict, leverage: float = 1.0,
+                 real_ticks: bool = False) -> dict:
+    """MT5-style backtest of one asset+strategy+timeframe with given params on the money account
+    (deposit and contract specs from engine/config/symbols.json). real_ticks=True fills every order
+    on real ticks with the live signal delay and latency (slower, closest to live)."""
     df = bars.load_bars(asset, timeframe)
     sig = strategies.signal(strategy, df, params)
-    r = ticksim.run(df, sig, timeframe, asset) if real_ticks else backtest.run(df, sig, timeframe, asset)
-    return _strip(r)
+    r = (ticksim.run(df, sig, timeframe, asset, leverage) if real_ticks
+         else backtest.run(df, sig, timeframe, asset, leverage))
+    return backtest.public(r)
 
 
 @mcp.tool()
@@ -111,7 +110,7 @@ def check_bot_pairs() -> dict:
 
 @mcp.tool()
 def bot_orders(send: bool = False) -> dict:
-    """Target positions for the single bot (one per pair, % of NAV, netted across combos).
+    """Orders for the single bot: one entry per combo (pair, exposure % of NAV from the last closed bar).
     send=True POSTs them to the bot webhook. Returns a STOP message instead when trading is unsafe."""
     buf, err = io.StringIO(), io.StringIO()
     from contextlib import redirect_stderr

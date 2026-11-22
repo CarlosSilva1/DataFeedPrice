@@ -1,26 +1,42 @@
 {
-  "_comment": "MT5-style contract specs used by the backtester. Defaults are typical raw-spread CFD broker values. Replace them with your broker's numbers from MT5 (Market Watch > right click symbol > Specification) so results match your account. Spreads come from the real tick data; extra_spread_points widens them if your broker is wider than the data feed.",
+  "_comment": "MT5-style account and contract specs used by the backtester. Defaults are typical values; replace them with your broker's numbers (MT5: Market Watch > right click symbol > Specification) so results match your account. Spreads come from the real tick data; extra_spread_points widens them if your broker is wider than the data feed.",
+  "account": {
+    "initial_deposit": 10000,
+    "currency": "USD"
+  },
+  "server_time": {
+    "_comment": "MT5 server clock = base_tz wall time + offset_hours. New York + 7h puts 00:00 at the New York close (GMT+2 winter / GMT+3 summer), the most common broker setting.",
+    "base_tz": "America/New_York",
+    "offset_hours": 7
+  },
   "defaults": {
+    "signal_delay_minutes": 20,
+    "signal_delay_jitter_minutes": 10,
     "latency_ms": 150,
-    "latency_jitter_ms": 100,
-    "rollover_utc_hour": 21
+    "latency_jitter_ms": 100
   },
   "US500": {
     "point": 0.01,
     "contract_size": 1,
+    "volume_min": 0.1,
+    "volume_step": 0.1,
     "extra_spread_points": 0,
     "slippage_points": 30,
     "commission_per_lot_per_side_usd": 0.0,
     "swap_long_pct_per_year": -6.0,
-    "swap_short_pct_per_year": -1.0
+    "swap_short_pct_per_year": -1.0,
+    "swap_triple_weekday": "Friday"
   },
   "XAUUSD": {
     "point": 0.01,
     "contract_size": 100,
+    "volume_min": 0.01,
+    "volume_step": 0.01,
     "extra_spread_points": 0,
     "slippage_points": 10,
     "commission_per_lot_per_side_usd": 3.5,
     "swap_long_pct_per_year": -4.5,
-    "swap_short_pct_per_year": -1.0
+    "swap_short_pct_per_year": -1.0,
+    "swap_triple_weekday": "Wednesday"
   }
 }

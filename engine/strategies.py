@@ -83,7 +83,7 @@ def rsi_reversion(df, n, lo, hi, mode):
 
 def bollinger_reversion(df, n, k, mode):
     c = df.close
-    ma, sd = c.rolling(n).mean(), c.rolling(n).std()
+    ma, sd = c.rolling(n).mean(), c.rolling(n).std(ddof=0)  # MT5 Bands use population std
     if mode == "long":
         return _hold(c < ma - k * sd, c > ma)
     return _hold(c < ma - k * sd, c > ma, c > ma + k * sd, c < ma)
