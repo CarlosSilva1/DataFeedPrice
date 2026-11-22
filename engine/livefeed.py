@@ -33,7 +33,7 @@ URL = "https://datafeed.dukascopy.com/datafeed/{inst}/{y:04d}/{m:02d}/{d:02d}/{h
 def fetch_hour(sym: str, hour: datetime) -> pd.DataFrame:
     inst, scale = DUKA[sym]
     url = URL.format(inst=inst, y=hour.year, m=hour.month - 1, d=hour.day, h=hour.hour)  # month is 0-based
-    for attempt in range(8):
+    for attempt in range(15):
         try:
             with urllib.request.urlopen(urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"}), timeout=30) as r:
                 raw = r.read()
@@ -41,9 +41,9 @@ def fetch_hour(sym: str, hour: datetime) -> pd.DataFrame:
         except urllib.error.HTTPError as e:
             if e.code == 404:
                 return pd.DataFrame()
-            time.sleep(min(2 ** attempt, 20))
+            time.sleep(min(1.5 ** attempt, 30))
         except (urllib.error.URLError, TimeoutError, ConnectionError):
-            time.sleep(min(2 ** attempt, 20))
+            time.sleep(min(1.5 ** attempt, 30))
     else:
         raise RuntimeError(f"could not fetch {url}")
     if not raw:
@@ -78,7 +78,7 @@ def update(sym: str, max_hours: int = 24 * 200) -> int:
             return e
 
     new = []
-    with ThreadPoolExecutor(max_workers=6) as ex:
+    with ThreadPoolExecutor(max_workers=3) as ex:
         for i, (h, b) in enumerate(zip(hours, ex.map(one, hours))):
             if isinstance(b, RuntimeError):  # keep what we have in order; the next run resumes from here
                 print(f"  {sym}: {b}; stopping at {h}")
