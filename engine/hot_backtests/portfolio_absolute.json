@@ -1,0 +1,142 @@
+{
+  "generated_at": "2026-11-22T01:35:38Z",
+  "benchmark": "absolute",
+  "portfolio_kpis": {
+    "net_return_pct": 11.024667065292014,
+    "cagr_pct": 2.116307248088356,
+    "max_drawdown_pct": 3.582918583781436,
+    "sharpe": 0.7287058015394575,
+    "sortino": 0.4096872935521377,
+    "calmar": 0.5906657376107026,
+    "ann_vol_pct": 2.0094668133207554,
+    "bh_return_pct": 20.71163439229302,
+    "bh_max_drawdown_pct": 8.054466606650912,
+    "bars": 1825,
+    "start": "2021-05-24 00:00:00",
+    "end": "2026-05-22 00:00:00",
+    "cash_pct": 70.0
+  },
+  "combos": [
+    {
+      "id": "US500|rsi_reversion|D1",
+      "asset": "US500",
+      "strategy": "rsi_reversion",
+      "timeframe": "D1",
+      "params": {
+        "n": 2,
+        "lo": 10,
+        "hi": 70,
+        "mode": "long"
+      },
+      "full": {
+        "net_return_pct": 40.10539029987177,
+        "cagr_pct": 6.986037055301808,
+        "max_drawdown_pct": 11.657502075938464,
+        "sharpe": 0.7892915351970388,
+        "sortino": 0.48051369584360665,
+        "calmar": 0.5992739276213607,
+        "ann_vol_pct": 7.253166407654289,
+        "trades": 83,
+        "win_rate_pct": 73.49397590361446,
+        "profit_factor": 2.3576040174194985,
+        "exposure_pct": 16.002570694087403,
+        "bh_return_pct": 32.7923422169631,
+        "bh_max_drawdown_pct": 28.84729022004565,
+        "bars": 1556,
+        "start": "2021-05-24 00:00:00",
+        "end": "2026-05-22 00:00:00",
+        "costs_pct_of_start": {
+          "spread_slippage": 1.9658815693188847,
+          "commission": 0.0,
+          "swap": 4.966666666666667
+        },
+        "execution": {
+          "model": "real ticks + latency",
+          "orders": 166,
+          "avg_latency_ms": 151.91864210990533
+        }
+      },
+      "in_sample": {
+        "net_return_pct": 18.82295734582651,
+        "cagr_pct": 5.056552357072452,
+        "max_drawdown_pct": 7.379138705652954,
+        "sharpe": 0.6571134931030382,
+        "sortino": 0.443100257394971,
+        "calmar": 0.6852496692058069,
+        "ann_vol_pct": 6.382988574988007,
+        "trades": 57,
+        "win_rate_pct": 70.17543859649122,
+        "profit_factor": 2.1288276685098726,
+        "exposure_pct": 16.89623507805326,
+        "bh_return_pct": 15.633840703793211,
+        "bh_max_drawdown_pct": 28.84729022004565,
+        "bars": 1089,
+        "start": "2021-05-24 00:00:00",
+        "end": "2024-11-21 00:00:00",
+        "costs_pct_of_start": {
+          "spread_slippage": 1.4540603870662308,
+          "commission": 0.0,
+          "swap": 3.6833333333333327
+        }
+      },
+      "out_of_sample": {
+        "net_return_pct": 18.02724319547526,
+        "cagr_pct": 11.725670602469274,
+        "max_drawdown_pct": 11.65750207593842,
+        "sharpe": 1.043156552118058,
+        "sortino": 0.5461200602423726,
+        "calmar": 1.0058476100700473,
+        "ann_vol_pct": 8.960008763547236,
+        "trades": 26,
+        "win_rate_pct": 80.76923076923077,
+        "profit_factor": 2.767115861166345,
+        "exposure_pct": 13.9186295503212,
+        "bh_return_pct": 14.833714687391609,
+        "bh_max_drawdown_pct": 21.44704924721974,
+        "bars": 467,
+        "start": "2024-11-22 00:00:00",
+        "end": "2026-05-22 00:00:00",
+        "costs_pct_of_start": {
+          "spread_slippage": 0.4139506102522871,
+          "commission": 0.0,
+          "swap": 1.2833333333333332
+        },
+        "execution": {
+          "model": "real ticks + latency",
+          "orders": 52,
+          "avg_latency_ms": 148.81931838067686
+        }
+      },
+      "param_robustness": 0.9375,
+      "leverage": 1.0,
+      "rejected_rules": [],
+      "outlier_flags": [],
+      "selected": true,
+      "bar_engine_full": {
+        "net_return_pct": 40.1181163649263,
+        "cagr_pct": 6.987982935113801,
+        "max_drawdown_pct": 11.637615570447334,
+        "sharpe": 0.7899910519977297,
+        "sortino": 0.4826824380207535,
+        "calmar": 0.600465180587263,
+        "ann_vol_pct": 7.2481411272772105,
+        "trades": 83,
+        "win_rate_pct": 73.49397590361446,
+        "profit_factor": 2.35659342657599,
+        "exposure_pct": 16.002570694087403,
+        "bh_return_pct": 32.7923422169631,
+        "bh_max_drawdown_pct": 28.84729022004565,
+        "bars": 1556,
+        "start": "2021-05-24 00:00:00",
+        "end": "2026-05-22 00:00:00",
+        "costs_pct_of_start": {
+          "spread_slippage": 1.9590661335417452,
+          "commission": 0.0,
+          "swap": 4.966666666666667
+        }
+      },
+      "engine": "real ticks + latency",
+      "nav_pct": 30.0
+    }
+  ]
+}

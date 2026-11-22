@@ -1,0 +1,13 @@
+{
+  "_comment": "One bot trades every portfolio combo. Fill in bot_id and available_pairs with the exact symbol names your bot/broker uses (MT5 Market Watch names). The engine maps each portfolio asset to the first equivalent your bot has and STOPS if an asset has none.",
+  "bot_id": "SET_ME",
+  "platform": "mt5",
+  "benchmark": "absolute",
+  "available_pairs": ["US500", "XAUUSD"],
+  "equivalents": {
+    "US500": ["US500", "US500.cash", "US500Cash", "SPX500", "SP500", "USA500", "USA500IDXUSD", "US500m", "ES", "MES", "SPY"],
+    "XAUUSD": ["XAUUSD", "GOLD", "XAUUSDm", "XAUUSD.r", "XAU/USD", "GC", "MGC", "PAXGUSDT"]
+  },
+  "max_data_age_hours": 6,
+  "webhook_url_env": "BOT_WEBHOOK_URL"
+}
