@@ -64,12 +64,25 @@ def _to_bar(t: pd.DataFrame, hour: datetime) -> dict | None:
     return {"timestamp": pd.Timestamp(hour.replace(tzinfo=None)), **b.iloc[0].to_dict()}
 
 
-def update(sym: str, max_hours: int = 24 * 200) -> int:
+def _save(live, new: list[dict]) -> None:
+    df = pd.DataFrame(new).set_index("timestamp")
+    if live.exists():
+        old = pd.read_csv(live, index_col=0, parse_dates=True)
+        df = pd.concat([old, df])
+        df = df[~df.index.duplicated(keep="last")].sort_index()
+    df.to_csv(live, float_format="%.5f")
+
+
+def update(sym: str, max_hours: int = 24 * 200, chunk: int = 100) -> int:
+    """Fetch every missing hour in order, saving after each chunk so an
+    interrupted run keeps its progress and the next run resumes from there."""
     live = bars.BARS_DIR / f"{sym}_H1_live.csv.gz"
     last = bars.load_h1_utc(sym).index[-1].to_pydatetime().replace(tzinfo=timezone.utc)
     now = datetime.now(timezone.utc).replace(minute=0, second=0, microsecond=0)
     hours = [last + timedelta(hours=i) for i in range(1, max_hours + 1) if last + timedelta(hours=i) < now]
-    hours = [h for h in hours if h.weekday() != 5]  # Saturday: market closed
+    # Market closed: Friday 22:00 UTC -> Sunday 21:00 UTC
+    hours = [h for h in hours if not (h.weekday() == 5 or (h.weekday() == 4 and h.hour >= 22)
+                                      or (h.weekday() == 6 and h.hour < 21))]
 
     def one(h):
         try:
@@ -77,25 +90,27 @@ def update(sym: str, max_hours: int = 24 * 200) -> int:
         except RuntimeError as e:
             return e
 
-    new = []
+    total, last_ts = 0, last
     with ThreadPoolExecutor(max_workers=3) as ex:
-        for i, (h, b) in enumerate(zip(hours, ex.map(one, hours))):
-            if isinstance(b, RuntimeError):  # keep what we have in order; the next run resumes from here
-                print(f"  {sym}: {b}; stopping at {h}")
+        for k in range(0, len(hours), chunk):
+            part = hours[k:k + chunk]
+            new, failed = [], None
+            for h, b in zip(part, ex.map(one, part)):
+                if isinstance(b, RuntimeError):  # keep everything before the gap; resume here next run
+                    failed = (h, b)
+                    break
+                if b:
+                    new.append(b)
+            if new:
+                _save(live, new)
+                total += len(new)
+                last_ts = new[-1]["timestamp"]
+            print(f"  {sym}: {min(k + chunk, len(hours))}/{len(hours)} hours, last bar {last_ts}", flush=True)
+            if failed:
+                print(f"  {sym}: {failed[1]}; stopping at {failed[0]}")
                 break
-            if b:
-                new.append(b)
-            if i and i % 500 == 0:
-                print(f"  {sym}: {i}/{len(hours)} hours", flush=True)
-    if new:
-        df = pd.DataFrame(new).set_index("timestamp")
-        if live.exists():
-            old = pd.read_csv(live, index_col=0, parse_dates=True)
-            df = pd.concat([old, df])
-            df = df[~df.index.duplicated(keep="last")].sort_index()
-        df.to_csv(live, float_format="%.5f")
-    print(f"{sym}: +{len(new)} bars, last {new[-1]['timestamp'] if new else last}")
-    return len(new)
+    print(f"{sym}: +{total} bars, last {last_ts}")
+    return total
 
 
 if __name__ == "__main__":
