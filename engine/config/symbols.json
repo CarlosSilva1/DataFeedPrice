@@ -16,15 +16,16 @@
     "latency_jitter_ms": 100
   },
   "US500": {
+    "_comment": "HFM USA500 (S&P 500 / Mini CFD), read from the MT5 Specification on 2026-11-21. HFM charges swap in money (USD per lot per night), not % of notional.",
     "point": 0.01,
     "contract_size": 1,
-    "volume_min": 0.1,
-    "volume_step": 0.1,
+    "volume_min": 0.01,
+    "volume_step": 0.01,
     "extra_spread_points": 0,
     "slippage_points": 30,
     "commission_per_lot_per_side_usd": 0.0,
-    "swap_long_pct_per_year": -6.0,
-    "swap_short_pct_per_year": -1.0,
+    "swap_long_usd_per_lot": -1.58,
+    "swap_short_usd_per_lot": 0.0,
     "swap_triple_weekday": "Friday"
   },
   "XAUUSD": {
